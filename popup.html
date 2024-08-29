@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Google Maps Scraper</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="popup.css" rel="stylesheet">
+</head>
+
+<body>
+  <div id="container">
+    <h1>
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="2" y1="12" x2="22" y2="12"></line>
+        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+      </svg>
+      Google Maps Scraper 1.0
+    </h1>
+    <h4>
+      <a href="https://github.com/syedusama5556" target="_blank">By Syed Usama Ahmad</a>
+    </h4>
+    <div id="message">Checking URL...</div>
+    <div class="button-container">
+      <button id="actionButton" class="button" disabled>Scrape Google Maps</button>
+      <button id="downloadCsvButton" class="button" disabled>Download as CSV</button>
+      <button id="resetButton" class="button">Reset Data</button>
+    </div>
+    <h4>Scraped Items: <span id="scrapedCount">0</span></h4>
+
+    <table id="resultsTable">
+      <thead>
+        <tr></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <div id="loadingText">Please wait while your data is being scraped...</div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+
+</html>
