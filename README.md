@@ -2,6 +2,8 @@
 
 This project is a web scraping tool designed to extract business information from Google Maps. It allows you to search for specific businesses or locations on Google Maps and collect data such as business name, phone number, and location.
 
+with support for scraping multiple items of search results thrould auto scroll. The extracted data can be exported to a CSV file for further analysis or storage.
+
 ## Features
 
 - Search for businesses or locations on Google Maps

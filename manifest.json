@@ -16,10 +16,17 @@
     "48": "images/icon48.png",
     "128": "images/icon128.png"
   },
-  "permissions": ["activeTab", "scripting", "downloads","storage"],
+  "permissions": ["activeTab", "tabs", "scripting", "downloads", "storage"],
+
   "background": {
     "service_worker": "background.js"
   },
+  "content_scripts": [
+    {
+      "matches": ["https://www.google.com/maps/*"],
+      "js": ["content.js"]
+    }
+  ],
   "host_permissions": ["https://www.google.com/maps/*"],
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'"

@@ -27,9 +27,13 @@
     <div class="button-container">
       <button id="actionButton" class="button" disabled>Scrape Google Maps</button>
       <button id="downloadCsvButton" class="button" disabled>Download as CSV</button>
+      <button id="downloadExcelButton" class="button" disabled>Download as Excel</button>
       <button id="resetButton" class="button">Reset Data</button>
     </div>
+    
     <h4>Scraped Items: <span id="scrapedCount">0</span></h4>
+
+    <div id="loadingText" style="font-weight: bold;">Please wait while your data is being scraped...</div>
 
     <table id="resultsTable">
       <thead>
@@ -37,8 +41,8 @@
       </thead>
       <tbody></tbody>
     </table>
-    <div id="loadingText">Please wait while your data is being scraped...</div>
   </div>
+  <script src="xlsx.full.min.js"></script>
   <script src="popup.js"></script>
 </body>
 

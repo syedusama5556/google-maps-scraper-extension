@@ -1,7 +1,9 @@
 let isScrapingInProgress = false;
 let scrapedResults = [];
 
-chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  console.log("Message received in background script:", message);
+
   if (message.action === "startScraping") {
     if (!isScrapingInProgress) {
       isScrapingInProgress = true;
@@ -9,134 +11,194 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
         chrome.scripting.executeScript(
           {
             target: { tabId: tabs[0].id },
-            function: scrapeData,
+            function: initiateScraping,
           },
-          (results) => {
-            isScrapingInProgress = false;
-            if (results && results[0] && results[0].result) {
-              scrapedResults = results[0].result;
-              // Store results in chrome.storage
-              chrome.storage.sync.set({ scrapedResults: scrapedResults }, () => {
-                chrome.runtime.sendMessage({
-                  action: "scrapingComplete",
-                  results: scrapedResults,
-                  scrapedCount :  scrapedResults.length
-                });
-              });
-            } else {
-              console.log("Scraping failed or returned no results.");
+          (injectionResults) => {
+            if (chrome.runtime.lastError) {
+              console.error(chrome.runtime.lastError);
+              isScrapingInProgress = false;
             }
+            sendResponse({ status: "Scraping initiated" });
           }
         );
       });
+    } else {
+      sendResponse({ status: "Scraping already in progress" });
     }
-    sendResponse({ status: "Scraping started" });
-  } else if (message.action === "getResults") {
-    // Retrieve results from chrome.storage
-    chrome.storage.sync.get("scrapedResults", (data) => {
-      if (chrome.runtime.lastError) {
-        console.error("Error retrieving data from chrome.storage.sync:", chrome.runtime.lastError);
-        sendResponse({ results: [] });
-      } else {
-        sendResponse({ results: data.scrapedResults || [] });
-      }
-    });
+  } else if (message.action === "stopScraping") {
+    isScrapingInProgress = false;
+    sendResponse({ status: "Scraping stopped" });
+  } else {
+    sendResponse({ status: "Unknown action" });
   }
-  return true; // Required to indicate async response
+  return true;
 });
 
-
-
-async function scrapeData() {
+function initiateScraping() {
   const delay = (ms) => new Promise((res) => setTimeout(res, ms));
+  let processedLinks = new Set();
+  let results = [];
 
-  var links = Array.from(
-    document.querySelectorAll('a[href^="https://www.google.com/maps/place"]')
-  );
-  var results = [];
+  async function scrollToNextElementTillEndReached(scrollableElement) {
+    console.log("Scrolling to next element ");
+    const endOfListIndicator = document.querySelector(
+      "div.m6QErb.XiKgde.tLjsW.eKbjU"
+    );
 
-  for (let link of links) {
+    const isEndOfListReached = () => {
+      if (endOfListIndicator && endOfListIndicator.offsetParent !== null) {
+        const endText = endOfListIndicator.textContent.trim();
+        return endText.includes("You've reached the end of the list.");
+      }
+      return false;
+    };
+    if (!scrollableElement) {
+      console.log("Scrollable element not found.");
+      return;
+    }
+
+    if (!isEndOfListReached()) {
+      console.log("Scrolling done.");
+      scrollableElement.scrollIntoView();
+      await delay(1000);
+
+      const newLinks = Array.from(
+        document.querySelectorAll(
+          'a[href^="https://www.google.com/maps/place"]'
+        )
+      ).filter((li) => !processedLinks.has(li.href));
+
+      return newLinks;
+    } else {
+      console.log("End of list reached.");
+    }
+
+    return [];
+  }
+
+  async function processLink(link) {
+    if (processedLinks.has(link.href)) {
+      return;
+    }
+
     link.click();
-    await delay(5000 + Math.random() * 3000); // Increased delay between clicks to 5-8 seconds
+    await delay(5000 + Math.random() * 2500);
 
-    var container = document.querySelector(".bJzME.Hu9e2e.tTVLSc");
+    const container = document.querySelector(".bJzME.Hu9e2e.tTVLSc");
     if (container) {
-      var titleText = "";
-      var rating = "";
-      var reviewCount = "";
-      var phone = "";
-      var industry = "";
-      var address = "";
-      var companyUrl = "";
+      const titleElement = container.querySelector("h1.DUwDvf.lfPIob");
+      const titleText = titleElement ? titleElement.textContent.trim() : "";
 
-      // Title
-      var titleElement = container.querySelector("h1.DUwDvf.lfPIob");
-      titleText = titleElement ? titleElement.textContent.trim() : "";
-
-      // Rating
-      var roleImgContainer = container.querySelector('[role="img"]');
+      const roleImgContainer = container.querySelector('[role="img"]');
+      let rating = "0";
       if (roleImgContainer) {
-        var ariaLabel = roleImgContainer.getAttribute("aria-label");
+        const ariaLabel = roleImgContainer.getAttribute("aria-label");
         if (ariaLabel && ariaLabel.includes("stars")) {
-          var parts = ariaLabel.split(" ");
-          rating = parts[0];
-        } else {
-          rating = "0";
+          rating = ariaLabel.split(" ")[0];
         }
       }
 
-      // Review Count
-      var reviewCountElement = container.querySelector(
+      const reviewCountElement = container.querySelector(
         '[aria-label*="reviews"]'
       );
-      reviewCount = reviewCountElement
+      const reviewCount = reviewCountElement
         ? reviewCountElement.textContent.trim()
         : "0";
 
-      // Address
-      var addressElement = container.querySelector(".rogA2c .Io6YTe");
-      address = addressElement ? addressElement.textContent.trim() : "";
-      if (address.startsWith("Address: ")) {
-        address = address.replace("Address: ", "");
-      }
+      const addressElement = container.querySelector(".rogA2c .Io6YTe");
+      let address = addressElement ? addressElement.textContent.trim() : "";
+      address = address.replace("Address: ", "");
 
-      // URL
-      var urlElement = container.querySelector('a[data-item-id="authority"]');
+      const urlElement = container.querySelector('a[data-item-id="authority"]');
+      let companyUrl = "";
       if (urlElement) {
-        var fullUrl = urlElement.getAttribute("href") || "";
-        var url = new URL(fullUrl);
-        companyUrl = url.origin; // This will get the base URL
-      } else {
-        companyUrl = "";
+        const fullUrl = urlElement.getAttribute("href") || "";
+        const url = new URL(fullUrl);
+        companyUrl = url.origin;
       }
 
-      // Phone Number
-      var phoneElement = container.querySelector(
+      const phoneElement = container.querySelector(
         '.CsEnBe[aria-label^="Phone"]'
       );
-      var phone = "";
-      if (phoneElement) {
-        phone = phoneElement
-          .getAttribute("aria-label")
-          .replace("Phone: ", "")
-          .trim();
-      }
+      const phone = phoneElement
+        ? phoneElement.getAttribute("aria-label").replace("Phone: ", "").trim()
+        : "";
 
-      // Industry
-      var industryElement = container.querySelector(".fontBodyMedium .DkEaL");
-      industry = industryElement ? industryElement.textContent.trim() : "";
+      const industryElement = container.querySelector(".fontBodyMedium .DkEaL");
+      const industry = industryElement
+        ? industryElement.textContent.trim()
+        : "";
 
-      results.push({
+      console.log(
+        `Title: ${titleText}, Rating: ${rating}, Review Count: ${reviewCount}, Phone: ${phone}, Industry: ${industry}, Address: ${address}, Company URL: ${companyUrl}, Google Maps Link: ${link.href}`
+      );
+
+   
+
+      const result = {
         title: titleText,
-        rating: rating,
-        reviewCount: reviewCount,
-        phone: phone,
-        industry: industry,
-        address: address,
-        companyUrl: companyUrl,
+        rating,
+        reviewCount,
+        phone,
+        industry,
+        address,
+        companyUrl,
         href: link.href,
-      });
+      };
+
+      if (!results.find(item => item.href === result.href)) {
+        results.push(result);
+        processedLinks.add(link.href);
+  
+        
+        // Send progress update
+        chrome.runtime.sendMessage({
+          action: "scrapingProgress",
+          scrapedCount: results.length,
+          latestResult: result,
+        });
+        console.log(`Processed: ${titleText}`);
+      }
     }
   }
-  return results;
+
+  async function main() {
+    let links = Array.from(
+      document.querySelectorAll('a[href^="https://www.google.com/maps/place"]')
+    );
+  
+    while (links.length > 0) {
+      const link = links.shift(); // Take the first link
+  
+      await processLink(link); // Process the link
+  
+      const newLinks = await scrollToNextElementTillEndReached(link); // Get new links
+  
+      // Add only new, unique links to the array
+      for (const newLink of newLinks) {
+        if (!links.some(existingLink => existingLink.href === newLink.href)) {
+          links.push(newLink);
+        }
+      }
+    }
+  
+    return results;
+  }
+
+  main().then((finalResults) => {
+    chrome.runtime.sendMessage({
+      action: "scrapingComplete",
+      results: finalResults,
+      scrapedCount: finalResults.length,
+    });
+  });
 }
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (
+    message.action === "scrapingProgress" ||
+    message.action === "scrapingComplete"
+  ) {
+    chrome.runtime.sendMessage(message);
+  }
+});
