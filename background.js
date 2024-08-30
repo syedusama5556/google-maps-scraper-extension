@@ -133,8 +133,6 @@ function initiateScraping() {
         `Title: ${titleText}, Rating: ${rating}, Review Count: ${reviewCount}, Phone: ${phone}, Industry: ${industry}, Address: ${address}, Company URL: ${companyUrl}, Google Maps Link: ${link.href}`
       );
 
-   
-
       const result = {
         title: titleText,
         rating,
@@ -146,11 +144,10 @@ function initiateScraping() {
         href: link.href,
       };
 
-      if (!results.find(item => item.href === result.href)) {
+      if (!results.find((item) => item.href === result.href)) {
         results.push(result);
         processedLinks.add(link.href);
-  
-        
+
         // Send progress update
         chrome.runtime.sendMessage({
           action: "scrapingProgress",
@@ -166,22 +163,26 @@ function initiateScraping() {
     let links = Array.from(
       document.querySelectorAll('a[href^="https://www.google.com/maps/place"]')
     );
-  
+    // backup code
+    // let places = Array.from(
+    //   document.querySelectorAll('[role="feed"] a[href*="/maps/place/"]')
+    // );
+
     while (links.length > 0) {
       const link = links.shift(); // Take the first link
-  
+
       await processLink(link); // Process the link
-  
+
       const newLinks = await scrollToNextElementTillEndReached(link); // Get new links
-  
+
       // Add only new, unique links to the array
       for (const newLink of newLinks) {
-        if (!links.some(existingLink => existingLink.href === newLink.href)) {
+        if (!links.some((existingLink) => existingLink.href === newLink.href)) {
           links.push(newLink);
         }
       }
     }
-  
+
     return results;
   }
 
